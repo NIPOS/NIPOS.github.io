@@ -205,6 +205,16 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .feature-body input[type="color"]{width:44px;height:44px;padding:0;border:1px solid var(--border);background:none;cursor:pointer;}
 .feature-body label.field textarea,.feature-body label.field input{display:block;margin-top:4px;}
 .deal-card{max-width:860px;}
+.deal-modal{max-width:760px;}
+.deal-modal .modal-actions{position:sticky;bottom:-22px;background:var(--surface);margin:14px -22px -22px;padding:12px 22px 22px;border-top:1px solid var(--border);flex-wrap:wrap;}
+.deal-modal .modal-actions .note{flex:1 0 100%;margin:0;}
+.deal-modal .modal-actions .note:empty{display:none;}
+.deal-modal .deal-card{background:none;border:0;padding:0;box-shadow:none;margin:0;}
+.deals-bar{display:flex;align-items:center;gap:12px 16px;flex-wrap:wrap;}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:24px 0 10px;}
+.section-head .section-title{margin:0;}
+.deal-row .btn{min-height:44px;}
+.deal-row .switch{margin:0 4px;}
 .deal-head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 16px;}
 .deal-head input[type="text"]{max-width:320px;}
 .deal-choice{border:1px solid var(--border);border-radius:10px;padding:6px 12px 8px;margin:10px 0 0;max-width:520px;}
@@ -290,13 +300,10 @@ table.data-table tr:last-child td{border-bottom:0;}
 .product-row{padding:12px 0;border-bottom:1px solid var(--border);}
 .product-row:last-child{border-bottom:0;}
 .product-row-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.mixer-label{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--text);cursor:pointer;min-height:44px;}
 .stop-btn{min-height:44px;min-width:120px;padding:0 12px;font-weight:800;font-size:13.5px;border-radius:10px;cursor:pointer;background:var(--surface-2);color:var(--text);border:2px solid var(--text-muted);}
 .stop-btn.on{background:transparent;border-color:var(--danger);}
 .stop-tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--danger);color:#2a0703;vertical-align:1px;}
 :root[data-theme="light"] .stop-tag{background:#b3261e;color:#fff;}
-.product-edit-panel{padding:12px 0 4px;display:none;}
-.product-edit-panel.open{display:block;}
 .size-edit-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .size-edit-row label{font-size:12px;color:var(--text-muted);width:110px;flex:0 0 auto;}
 .category-group{margin-bottom:18px;}
@@ -343,7 +350,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261025b">
+<link rel="stylesheet" href="nipos.css?v=20261025c">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -478,7 +485,9 @@ table.data-table tr:last-child td{border-bottom:0;}
           <select id="productCategoryFilter" aria-label="Show one category"><option value="">All categories</option></select>
           <button class="btn btn-accent" id="toggleAddProductBtn">+ Add product</button>
         </div>
-        <div class="card" id="addProductCard" hidden>
+        <div class="modal-overlay" id="addProductCard" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="addProductTitle" style="max-width:520px;">
+          <h3 id="addProductTitle">Add a product</h3>
           <label class="field">Name</label>
           <input type="text" id="newName" placeholder="e.g. Bacardi">
           <label class="field" for="newProductCategory">Category</label>
@@ -524,20 +533,25 @@ table.data-table tr:last-child td{border-bottom:0;}
             <span class="info"><span class="name">Also usable as a mixer</span></span>
             <span class="switch"><input type="checkbox" id="newIsMixer"><span class="slider"></span></span>
           </label>
-          <button class="btn btn-accent" id="addBtn" style="margin-top:12px;">Add product</button>
+          <div class="modal-actions"><button type="button" class="btn btn-ghost" id="addProductCancel">Cancel</button><button class="btn btn-accent" id="addBtn">Add product</button></div>
+        </div>
         </div>
         <div id="productsList"><div class="empty">Loading…</div></div>
       </div>
 
       <div class="tab-panel" id="tab-categories">
-        <div class="card">
+        <div class="toolbar"><button type="button" class="btn btn-accent" id="openAddCategoryBtn">+ Add category</button></div>
+        <div class="modal-overlay" id="addCategoryModal" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="addCategoryTitle">
+          <h3 id="addCategoryTitle">Add a category</h3>
           <label class="field">Name</label>
           <input type="text" id="newCategoryName" placeholder="e.g. Botanical Gins">
           <label class="field" for="newCategoryMode">Menu</label>
           <select id="newCategoryMode"><option value="drink">Drinks</option><option value="food">Food</option></select>
           <label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">Spirit (single/double pricing)</span></span><span class="switch"><input type="checkbox" id="newCategoryIsSpirit"><span class="slider"></span></span></label>
           <label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">Draught-style</span></span><span class="switch"><input type="checkbox" id="newCategoryIsBeer"><span class="slider"></span></span></label>
-          <button class="btn btn-accent" id="addCategoryBtn" style="margin-top:12px;">Add category</button>
+          <div class="modal-actions"><button type="button" class="btn btn-ghost" id="addCategoryCancel">Cancel</button><button class="btn btn-accent" id="addCategoryBtn">Add category</button></div>
+        </div>
         </div>
         <div id="categoriesList"><div class="empty">Loading…</div></div>
       </div>
@@ -545,29 +559,20 @@ table.data-table tr:last-child td{border-bottom:0;}
 
     <section class="page" id="page-discounts">
       <div class="page-header"><h1>Discounts</h1><label class="page-venue" data-page-venue-wrap hidden><span>Venue</span><select data-page-venue aria-label="Venue for Discounts"></select></label></div>
-      <div class="section-title">Deals</div>
-      <p class="note">Money off when someone buys two, like Happy Hour. Each deal has its own times, the categories it covers, what makes a pair, which one gets money off, and which discount buttons can be used with it.</p>
-      <div class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div class="card deals-bar">
         <label for="hhMode" style="font-weight:700;font-size:13.5px;">Deals right now</label>
         <select id="hhMode" style="max-width:320px;">
           <option value="auto">Follow each deal's times</option>
           <option value="on">All switched-on deals on now (until 6am)</option>
           <option value="off">All deals off now (until 6am)</option>
         </select>
+        <button type="button" class="btn btn-ghost btn-sm" id="dealRulesBtn">When deals overlap</button>
       </div>
+      <div class="section-head"><div class="section-title">Deals</div><button type="button" class="btn btn-accent btn-sm" id="dealAdd">+ Add a deal</button></div>
       <p class="note" id="dealsScopeNote"></p>
-      <div id="dealsList"></div>
-      <div class="feature-actions"><button type="button" class="btn btn-ghost" id="dealAdd">Add a deal</button><button type="button" class="btn btn-accent" id="dealsSave">Save deals</button></div>
+      <div class="card" id="dealsList"></div>
       <p class="note" id="dealsMsg" role="status"></p>
-      <div class="section-title">Add a Custom Offer</div>
-      <div class="card">
-        <label class="field">Name</label>
-        <input type="text" id="offerName" placeholder="e.g. Bank Holiday 15%">
-        <label class="field">Discount (%)</label>
-        <input type="number" id="offerPct" step="1" placeholder="e.g. 15">
-        <button class="btn btn-accent" id="addOfferBtn" style="margin-top:12px;">Add offer</button>
-      </div>
-      <div class="section-title">Custom Offers</div>
+      <div class="section-head"><div class="section-title">Custom offers</div><button type="button" class="btn btn-accent btn-sm" id="openAddOfferBtn">+ Add offer</button></div>
       <p class="note">Shows up as a tap-to-apply chip on the till.</p>
       <div class="card" id="offerList"><div class="empty">None added yet.</div></div>
     </section>
@@ -659,6 +664,13 @@ table.data-table tr:last-child td{border-bottom:0;}
       <p class="note">Leave a person on <b>Let them choose</b> to let them pick their own sounds on their till or order screen. Pick a sound and press Save to lock them to it on every screen; set it back to Let them choose to give them their own pick again. A sound set for an alert in Master settings › Alert settings still plays for that alert.</p>
       <p class="note" id="ntSoundMsg" role="status"></p>
       <div class="card" id="ntSoundList"><div class="empty">Loading…</div></div>
+      <div class="modal-overlay" id="ntSoundModal" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ntSoundTitle">
+          <h3 id="ntSoundTitle">Notification sound</h3>
+          <div id="ntSoundBody"></div>
+          <div class="modal-actions"><button type="button" class="btn btn-ghost" id="ntSoundClose">Close</button></div>
+        </div>
+      </div>
     </section>
 
     <section class="page" id="page-settings">
@@ -684,11 +696,12 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
       <div class="section-title">Notification Sounds</div>
       <p class="note">Staff pick their own sound from this list (Order Screen &gt; Notifications). The built-in tones always work with no setup; upload a file here to add more options.</p>
-      <div class="card" id="soundsList"><div class="empty">Loading…</div></div>
       <div class="card">
         <label class="field">Upload a sound (MP3/WAV/OGG/M4A, under 2MB)</label>
         <input type="file" id="soundUploadInput" accept=".mp3,.wav,.ogg,.m4a,audio/*" multiple>
         <p class="note" id="soundUploadMsg" role="status" style="margin-top:8px;"></p>
+        <details class="mini-menu"><summary>Every sound, to listen to or delete</summary>
+          <div class="mini-menu-body" id="soundsList"><div class="empty">Loading…</div></div></details>
       </div>
     </section>
 
@@ -708,7 +721,7 @@ table.data-table tr:last-child td{border-bottom:0;}
     </section>
     <section class="page" id="page-activity">
       <div class="page-header"><h1>Activity log</h1></div>
-      <p class="note">Everything people do on the tills, the order screens and Backend: signing in and out, sales and money, refunds, stops, menu and price changes, discounts, staff and settings. Untick what you don't want to see.</p>
+      <p class="note">Everything people do on the tills, the order screens and Backend: signing in and out, sales and money, refunds, stops, menu and price changes, discounts, staff and settings. Open Filters to narrow it down.</p>
       <div class="act-viewer" data-act-root="pg"></div>
     </section>
     <section class="page" id="page-themes">
@@ -788,6 +801,52 @@ table.data-table tr:last-child td{border-bottom:0;}
   </main>
 </div>
 
+<div class="modal-overlay" id="productModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="productModalTitle" style="max-width:560px;">
+    <h3 id="productModalTitle">Edit product</h3>
+    <div id="productModalBody"></div>
+    <button type="button" class="btn btn-ghost btn-block" id="productModalClose" style="margin-top:10px;">Cancel</button>
+  </div>
+</div>
+<div class="modal-overlay" id="dealModal" hidden>
+  <div class="modal-card deal-modal" role="dialog" aria-modal="true" aria-labelledby="dealModalTitle">
+    <h3 id="dealModalTitle">Edit deal</h3>
+    <datalist id="dealItemOptions"></datalist>
+    <div id="dealEditor"></div>
+    <button type="button" class="btn btn-danger btn-sm" id="dealModalRemove" style="margin-top:14px;">Remove this deal</button>
+    <div class="modal-actions">
+      <p class="note" id="dealModalMsg" role="status"></p>
+      <button type="button" class="btn btn-ghost" id="dealModalCancel">Cancel</button>
+      <button type="button" class="btn btn-accent" id="dealModalSave">Save deal</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="dealRulesModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="dealRulesTitle">
+    <h3 id="dealRulesTitle">When deals overlap</h3>
+    <p class="note">When more than one deal could apply to the same drink.</p>
+    <fieldset class="deal-choice deal-card" style="max-width:none;"><legend>Which deal it gets</legend>
+      <label class="check"><input type="radio" name="dealOverlap" value="order">The first deal in the list wins</label>
+      <label class="check"><input type="radio" name="dealOverlap" value="best">Whichever gives the customer the best price</label></fieldset>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="dealRulesCancel">Cancel</button>
+      <button type="button" class="btn btn-accent" id="dealRulesSave">Save</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="offerModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="offerModalTitle">
+    <h3 id="offerModalTitle">Add a custom offer</h3>
+    <label class="field" for="offerName">Name</label>
+    <input type="text" id="offerName" placeholder="e.g. Bank Holiday 15%">
+    <label class="field" for="offerPct">Discount (%)</label>
+    <input type="number" id="offerPct" step="1" placeholder="e.g. 15">
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="offerModalCancel">Cancel</button>
+      <button type="button" class="btn btn-accent" id="addOfferBtn">Add offer</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="userModal" hidden>
   <div class="modal-card">
     <h3 id="userModalTitle">Add a user</h3>
@@ -873,7 +932,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261025b"></script>
+<script src="db.js?v=20261025c"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -2103,7 +2162,8 @@ function activityViewerHTML(k){
       <label>To <input type="date" id="${k}To"></label>
       <label class="act-search">Search <input type="text" id="${k}Search" placeholder="e.g. refund, Zombie, Sam"></label>
     </div>
-    <div class="act-filters" id="${k}Filters"></div>
+    <details class="mini-menu act-filter-menu"><summary>Filters<span style="font-weight:600;margin-left:6px;" id="${k}FilterSum">showing everything</span></summary>
+      <div class="mini-menu-body"><div class="act-filters" id="${k}Filters"></div></div></details>
     <div class="feature-actions"><button type="button" class="btn btn-solid" id="${k}Load">Show activity</button><button type="button" class="btn btn-ghost" id="${k}Csv">Download as spreadsheet</button>
       <label class="check act-live"><input type="checkbox" id="${k}Live" checked><span class="live-dot" aria-hidden="true"></span>Live: add new activity as it happens</label></div>
     <p class="note" id="${k}Count" role="status"></p>
@@ -2144,12 +2204,20 @@ function renderActivityFilters(k){
     + actGroupHTML(k, "screen", "Where it was done", [{ value: "Till", label: "Till" }, { value: "Order screen", label: "Order screen" }, { value: "Backend", label: "Backend" }])
     + actGroupHTML(k, "venue", "Venue", venueList)
     + actGroupHTML(k, "person", "Who", people);
-  wrap.querySelectorAll("[data-act-check]").forEach(c => { const b = before[c.dataset.actCheck]; if (b && c.value in b) c.checked = b[c.value]; c.addEventListener("change", () => showActivity(k)); });
+  wrap.querySelectorAll("[data-act-check]").forEach(c => { const b = before[c.dataset.actCheck]; if (b && c.value in b) c.checked = b[c.value]; c.addEventListener("change", () => { actFilterSummary(k); showActivity(k); }); });
   wrap.querySelectorAll("[data-act-all],[data-act-none]").forEach(btn => btn.addEventListener("click", () => {
     const g = btn.dataset.actAll || btn.dataset.actNone, on = !!btn.dataset.actAll;
     wrap.querySelectorAll(`[data-act-check="${g}"]`).forEach(c => { c.checked = on; });
-    showActivity(k);
+    actFilterSummary(k); showActivity(k);
   }));
+  actFilterSummary(k);
+}
+// The closed Filters menu says which groups have something unticked.
+function actFilterSummary(k){
+  const wrap = document.getElementById(k + "Filters"), out = document.getElementById(k + "FilterSum");
+  if (!wrap || !out) return;
+  const narrowed = [...wrap.querySelectorAll("[data-act-group]")].filter(g => [...g.querySelectorAll("[data-act-check]")].some(c => !c.checked)).map(g => g.querySelector("legend").textContent);
+  out.textContent = narrowed.length ? "narrowed by " + narrowed.join(", ") : "showing everything";
 }
 async function loadActivity(k){
   const list = document.getElementById(k + "List");
@@ -3039,9 +3107,15 @@ document.getElementById("newProductCategory").addEventListener("change", e => {
   document.getElementById("newCategoryFields").hidden = e.target.value !== "__new";
 });
 document.getElementById("toggleAddProductBtn").addEventListener("click", () => {
-  const card = document.getElementById("addProductCard");
-  card.hidden = !card.hidden;
+  document.getElementById("addProductCard").hidden = false;
+  document.getElementById("newName").focus();
 });
+document.getElementById("addProductCancel").addEventListener("click", () => { document.getElementById("addProductCard").hidden = true; });
+document.getElementById("openAddCategoryBtn").addEventListener("click", () => { document.getElementById("addCategoryModal").hidden = false; document.getElementById("newCategoryName").focus(); });
+document.getElementById("addCategoryCancel").addEventListener("click", () => { document.getElementById("addCategoryModal").hidden = true; });
+document.getElementById("productModalClose").addEventListener("click", () => { document.getElementById("productModal").hidden = true; });
+// Escape closes the Products pop-ups without saving.
+document.addEventListener("keydown", e => { if (e.key === "Escape") ["addProductCard", "addCategoryModal", "productModal"].forEach(id => { document.getElementById(id).hidden = true; }); });
 document.getElementById("productSearch").addEventListener("input", renderProductsList);
 document.getElementById("productCategoryFilter").addEventListener("change", renderProductsList);
 
@@ -3156,11 +3230,8 @@ function renderProductRow(it, cat){
       <div class="info"><div class="name">${esc(it.name)}${stops.has(it.name) ? `<span class="stop-tag">On stop</span>` : it.__copies && stopCountFor(it.name) ? `<span class="stop-tag">On stop at ${stopCountFor(it.name)} of ${myVenues.length}</span>` : ""}</div><div class="price">${it.__varies ? "Prices differ by venue" : summary}${it.__copies ? ` · at ${it.__copies.length} of ${myVenues.length} venues` : ""}${productExtrasText(it)}</div></div>
       ${featureOn("favourites") ? `<button type="button" class="btn btn-ghost btn-sm fav-btn${isFavourite(it.name) ? " on" : ""}" aria-pressed="${isFavourite(it.name)}" aria-label="Favourite: ${esc(it.name)}">${isFavourite(it.name) ? "★" : "☆"}</button>` : ""}
       <button type="button" class="stop-btn${stops.has(it.name) ? " on" : ""}" aria-label="${stops.has(it.name) ? "Put " + esc(it.name) + " back on sale" : "Put " + esc(it.name) + " on stop"}">${stops.has(it.name) ? "Back on sale" : "Put on stop"}</button>
-      <label class="mixer-label" title="Offer this as a mixer when someone orders a spirit"><span>Mixer</span><span class="switch"><input type="checkbox" class="mixer-toggle" aria-label="${esc(it.name)} can be a mixer" ${mixerOverrides.has(it.name) ? "checked" : ""}><span class="slider"></span></span></label>
       <button type="button" class="btn btn-ghost btn-sm edit-product-btn">Edit</button>
-      <button type="button" class="btn btn-danger btn-sm delete-product-btn">Delete</button>
-    </div>
-    <div class="product-edit-panel"></div>`;
+    </div>`;
 
   row.querySelector(".stop-btn").addEventListener("click", async () => {
     await setStopsForNames([it.name], !stops.has(it.name));
@@ -3168,7 +3239,8 @@ function renderProductRow(it, cat){
   });
   const favBtn = row.querySelector(".fav-btn");
   if (favBtn) favBtn.addEventListener("click", async () => { favBtn.disabled = true; await toggleFavourite(it.name); renderProductsList(); });
-  row.querySelector(".mixer-toggle").addEventListener("change", async e => {
+  const bindMixerAndDelete = panel => {
+  panel.querySelector(".mixer-toggle").addEventListener("change", async e => {
     for (const v of scopeVenueIds()) {
       const id = v + ":" + it.name; // per venue, like stops
       if (e.target.checked) await upsertFor("mixer_overrides", v, { id, ts: Date.now(), name: it.name }); else { await removeRowById("mixer_overrides", id); await removeRowById("mixer_overrides", it.name); }
@@ -3176,18 +3248,20 @@ function renderProductRow(it, cat){
     if (e.target.checked) mixerOverrides.add(it.name); else mixerOverrides.delete(it.name);
     logActivity(e.target.checked ? "Made it a mixer" : "No longer a mixer", it.name, productsAllVenues ? null : undefined);
   });
-  row.querySelector(".delete-product-btn").addEventListener("click", async () => {
+  panel.querySelector(".delete-product-btn").addEventListener("click", async () => {
     if (!confirm(`Delete "${it.name}"?`)) return;
+    document.getElementById("productModal").hidden = true;
     if (it.__copies) { for (const c of it.__copies) await removeRowById("catalogue_items", c.item.id); }
     else await catalogueItemsStore.remove(it.id);
     logActivity("Deleted a product", it.name + (it.__copies ? " (every venue)" : ""), it.__copies ? null : undefined);
     realItems = realItems.filter(x => x.id !== it.id);
     renderProductsList();
   });
-  const panel = row.querySelector(".product-edit-panel");
+  };
   row.querySelector(".edit-product-btn").addEventListener("click", () => {
-    if (panel.classList.contains("open")) { panel.classList.remove("open"); panel.innerHTML = ""; return; }
-    panel.classList.add("open");
+    const panel = document.getElementById("productModalBody");
+    document.getElementById("productModalTitle").textContent = "Edit " + it.name;
+    document.getElementById("productModal").hidden = false;
     panel.innerHTML = `
       <label class="field">Name</label>
       <input type="text" class="edit-name" aria-label="Name" value="${it.name.replace(/"/g,"&quot;")}">
@@ -3195,7 +3269,10 @@ function renderProductRow(it, cat){
       <select class="edit-category" aria-label="Category">${realCategories.slice().sort((a,b)=>a.order-b.order).map(c => `<option value="${c.id}" ${c.id===it.categoryId?"selected":""}>${c.name}</option>`).join("")}</select>
       <div class="edit-sizes"></div>
       <div class="edit-extras"></div>
-      <button type="button" class="btn btn-accent btn-sm save-product-btn" style="margin-top:10px;">Save</button>`;
+      <label class="row" style="border:0;padding:10px 0 0;" title="Offer this as a mixer when someone orders a spirit"><span class="info"><span class="name" style="display:block;">Also usable as a mixer</span><span class="sub" style="display:block;">Saves straight away.</span></span><span class="switch"><input type="checkbox" class="mixer-toggle" aria-label="${esc(it.name)} can be a mixer" ${mixerOverrides.has(it.name) ? "checked" : ""}><span class="slider"></span></span></label>
+      <button type="button" class="btn btn-accent btn-block save-product-btn" style="margin-top:14px;">Save</button>
+      <button type="button" class="btn btn-danger btn-block delete-product-btn" style="margin-top:10px;">Delete this product</button>`;
+    bindMixerAndDelete(panel);
     panel.querySelector(".edit-extras").innerHTML = productExtrasEditorHTML(it, cat);
     const sizesWrap = panel.querySelector(".edit-sizes");
     if (it.sizes && it.sizes.length) {
@@ -3247,8 +3324,8 @@ function renderProductRow(it, cat){
       const stockNow = stockFor(it.name);
       logActivity("Changed a product", `${was.name}: ${[was.name !== now.name ? `name ${was.name} → ${now.name}` : "", was.price !== now.price ? `price ${was.price} → ${now.price}` : "", was.cat !== now.cat ? `category ${was.cat} → ${now.cat}` : "",
         was.tags !== now.tags ? `tags ${was.tags || "none"} → ${now.tags || "none"}` : "", was.pc !== now.pc ? `price change ${was.pc || "none"} → ${now.pc || "none"}` : "", extras.stock !== undefined && extras.stock !== stockWas ? `stock left ${stockWas == null ? "not counted" : stockWas} → ${stockNow == null ? "not counted" : stockNow}` : ""].filter(Boolean).join("; ") || "nothing changed"}${it.__copies ? " (every venue)" : ""}`, it.__copies ? null : undefined);
-      e.target.textContent = "Saved";
-      setTimeout(() => { renderProductsList(); }, 700);
+      document.getElementById("productModal").hidden = true;
+      renderProductsList();
     });
   });
   return row;
@@ -3415,6 +3492,7 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
   document.getElementById("newCategoryName").value = "";
   document.getElementById("newCategoryIsSpirit").checked = false;
   document.getElementById("newCategoryIsBeer").checked = false;
+  document.getElementById("addCategoryModal").hidden = true;
   renderCategoriesList(); renderCategoryFilterOptions(); renderNewProductCategoryOptions();
 });
 function renderCategoriesList(){
@@ -3526,7 +3604,7 @@ const poundsToPence = v => { const n = parseFloat(v); return isFinite(n) && n >=
 function dealCoverHTML(cover, key, legend){
   const chosen = new Set(cover.categories || []);
   return `<fieldset class="deal-choice deal-cover" data-cover="${key}"><legend>${legend}</legend>
-    <details class="deal-cats" ${chosen.size ? "open" : ""}><summary>Categories${chosen.size ? ` (${chosen.size} ticked)` : ""}</summary>
+    <details class="deal-cats"><summary>Categories: ${chosen.size ? esc([...chosen].join(", ")) : "none ticked"}</summary>
     <div class="feature-people">${allCategoryNames().map(n => `<label><input type="checkbox" data-deal-cat="${esc(n)}" ${chosen.has(n) ? "checked" : ""}>${esc(n)}</label>`).join("") || `<span class="note">No categories at this venue yet.</span>`}</div></details>
     <span class="field">Items</span>
     <div class="deal-items" data-deal-items>${(cover.items || []).map(v => `<span class="deal-chip" data-item="${esc(v)}">${esc(dealItemLabel(v))}<button type="button" data-deal-item-remove aria-label="Take ${esc(dealItemLabel(v))} off">×</button></span>`).join("")}</div>
@@ -3584,7 +3662,6 @@ function dealCardHTML(d, i){
     <span class="field">Discount buttons while this deal is on</span>
     <table class="feature-table"><tbody>${dealButtonList().map(b => { const v = (d.buttons || {})[b.key] || "allowed"; return `<tr><th scope="row">${esc(b.label)}</th><td><select data-deal-button="${esc(b.key)}" aria-label="${esc(b.label)} during ${esc(d.name || "this deal")}">
       <option value="allowed" ${v === "allowed" ? "selected" : ""}>Allowed</option><option value="notOnDeal" ${v === "notOnDeal" ? "selected" : ""}>Not on this deal's items</option><option value="off" ${v === "off" ? "selected" : ""}>Switched off</option></select></td></tr>`; }).join("")}</tbody></table>
-    <div class="feature-actions"><button type="button" class="btn btn-danger btn-sm" data-deal-act="remove" data-i="${i}">Remove this deal</button></div>
   </div>`;
 }
 // Shows only the settings for the deal's type, and the % or £ box for the pair's price.
@@ -3598,41 +3675,136 @@ function syncDealCard(card){
 }
 const LS_DEAL_RULES = "starlightTill.dealRules.v1";
 let venueDealRules = null;
-function renderDeals(list){
-  const deals = list || venueDeals || DEFAULT_DEALS;
-  const wrap = document.getElementById("dealsList");
-  wrap.innerHTML = `<datalist id="dealItemOptions">${dealItemChoices().map(c => `<option value="${esc(c.label)}"></option>`).join("")}</datalist>`
-    + `<fieldset class="deal-choice" id="dealOverlap"><legend>When more than one deal could apply to the same drink</legend>
-      <label class="check"><input type="radio" name="dealOverlap" value="order" ${!(venueDealRules && venueDealRules.overlap === "best") ? "checked" : ""}>The first deal in this list wins</label>
-      <label class="check"><input type="radio" name="dealOverlap" value="best" ${venueDealRules && venueDealRules.overlap === "best" ? "checked" : ""}>Whichever gives the customer the best price</label></fieldset>`
-    + (deals.map(dealCardHTML).join("") || `<div class="empty">No deals. Add one below.</div>`);
-  document.getElementById("dealsScopeNote").textContent = productsAllVenues ? `Showing ${currentVenue ? currentVenue.name : "this venue"}'s deals. Saving copies them to every venue.` : (venueDeals ? "" : "These are the original Happy Hour settings. Nothing is saved for this venue yet.");
-  wrap.querySelectorAll("[data-deal-act]").forEach(b => b.addEventListener("click", () => dealAction(b)));
-  wrap.querySelectorAll("[data-deal]").forEach(syncDealCard);
+// One line for a deal: what it does, and when.
+function dealSummary(d){
+  const type = ["price", "multibuy", "bundle", "percent"].includes(d.type) ? d.type : "pair";
+  const what = [...(d.categories || []), ...(d.items || []).map(dealItemLabel)].join(", ") || (type === "pair" ? "Cocktails" : "nothing chosen yet");
+  const pct = Number(d.pct) || 0, off = pct >= 100 ? "free" : pct === 50 ? "half price" : `${pct}% off`, money = p => p == null ? "£?" : fmt(p);
+  let text;
+  if (type === "price") text = `${what}: ${money(d.pricePence)} each`;
+  else if (type === "percent") text = `${what}: ${off}`;
+  else if (type === "multibuy") text = `${what}: ${Number(d.buyQty) || 2} for ${money(d.forPence)}`;
+  else if (type === "bundle") text = `${(d.parts || []).map(pt => [...(pt.categories || []), ...(pt.items || []).map(dealItemLabel)].join(" or ") || "?").join(" + ")} for ${money(d.bundlePence)}`;
+  else {
+    const pair = `buy 2${d.pairFrom === "sameProduct" ? " of the same" : ""}${d.samePrice || d.discounted === "samePriceOne" ? " at the same price" : ""}`;
+    text = d.discounted === "fixed" ? `${what}: ${pair} for ${money(d.pairPence)}` : d.discounted === "matchCheaper" ? `${what}: ${pair}, both at the cheaper price`
+      : d.discounted === "samePriceOne" ? `${what}: ${pair}, one ${off}` : `${what}: ${pair}, the ${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${off}`;
+  }
+  return text + (d.stack === false ? ", once per order" : "");
 }
+function dealTimes(d){
+  const t = x => !x || x === "close" || x === "24:00" ? "close" : x;
+  return (d.windows || []).map(w => `${w.days && w.days.length && w.days.length < 7 ? w.days.map(x => DAY_NAMES[x]).join(" ") + " " : ""}${w.from}-${t(w.to)}`).join(", ") || "All day";
+}
+// The list: each deal with its switch and an Edit button; the deal itself is edited in a pop-up.
+function renderDeals(){
+  const deals = venueDeals || DEFAULT_DEALS;
+  const wrap = document.getElementById("dealsList");
+  wrap.innerHTML = deals.map((d, i) => `<div class="row deal-row">
+      <div class="info"><div class="name">${esc(d.name || "Deal")}</div><div class="sub">${esc(dealSummary(d))}</div><div class="sub">${esc(dealTimes(d))}</div></div>
+      ${deals.length > 1 ? `<button type="button" class="btn btn-ghost btn-sm" data-deal-up="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move ${esc(d.name || "deal")} up the list">↑</button>` : ""}
+      <label class="switch" title="Switched on"><input type="checkbox" data-deal-toggle="${i}" ${d.enabled !== false ? "checked" : ""} aria-label="${esc(d.name || "Deal")} switched on"><span class="slider"></span></label>
+      <button type="button" class="btn btn-ghost btn-sm" data-deal-edit="${i}">Edit</button></div>`).join("") || `<div class="empty">No deals yet.</div>`;
+  document.getElementById("dealsScopeNote").textContent = productsAllVenues ? `Showing ${currentVenue ? currentVenue.name : "this venue"}'s deals. Changes are copied to every venue.` : (venueDeals ? (deals.length > 1 ? "When deals overlap, the order of this list can matter (see When deals overlap)." : "") : "These are the original Happy Hour settings. Nothing is saved for this venue yet.");
+}
+// Saves the whole list (and the overlap rule) for this venue, or every venue on All venues.
+async function saveDeals(deals, rules){
+  const dealsBefore = venueDeals || DEFAULT_DEALS, msg = document.getElementById("dealsMsg");
+  rules = rules || { overlap: venueDealRules && venueDealRules.overlap === "best" ? "best" : "order" };
+  const rulesBefore = venueDealRules && venueDealRules.overlap === "best" ? "best" : "order";
+  if (productsAllVenues) { for (const v of scopeVenueIds()) { await saveDocFor(v, LS_DEALS, deals); await saveDocFor(v, LS_DEAL_RULES, rules); } }
+  else { await saveDoc(LS_DEALS, deals); await saveDoc(LS_DEAL_RULES, rules); }
+  venueDeals = deals; venueDealRules = rules;
+  renderDeals();
+  msg.textContent = `Deals saved${productsAllVenues ? " at every venue" : ""}. Tills pick them up within a few seconds.`;
+  const ruleNote = rulesBefore !== rules.overlap ? `when deals overlap: ${rules.overlap === "best" ? "best price for the customer" : "first deal in the list wins"}` : "";
+  const changes = dealChanges(dealsBefore, deals);
+  logActivity("Changed deals", (changes === "nothing changed" && ruleNote ? ruleNote : changes + (ruleNote ? "; " + ruleNote : "")) + (productsAllVenues ? " (every venue)" : ""), productsAllVenues ? null : undefined);
+}
+const currentDeals = () => (venueDeals || DEFAULT_DEALS).map(d => JSON.parse(JSON.stringify(d)));
+document.getElementById("dealsList").addEventListener("change", async e => {
+  const t = e.target.closest("[data-deal-toggle]"); if (!t) return;
+  const deals = currentDeals(), d = deals[Number(t.dataset.dealToggle)];
+  d.enabled = t.checked;
+  const problems = t.checked ? dealProblems(deals.filter(x => x === d)) : [];
+  if (problems.length) { t.checked = false; document.getElementById("dealsMsg").textContent = "Not switched on. " + problems.join(". ") + ". Press Edit to fix it."; return; }
+  await saveDeals(deals);
+});
+document.getElementById("dealsList").addEventListener("click", async e => {
+  const up = e.target.closest("[data-deal-up]");
+  if (up) { const deals = currentDeals(), i = Number(up.dataset.dealUp); if (i > 0) { [deals[i - 1], deals[i]] = [deals[i], deals[i - 1]]; await saveDeals(deals); } return; }
+  const ed = e.target.closest("[data-deal-edit]"); if (ed) openDealEditor(Number(ed.dataset.dealEdit));
+});
+// The pop-up: one deal's card. dealEditIndex is its place in the list, or -1 for a new one.
+let dealEditIndex = -1;
+function renderDealEditor(d){
+  document.getElementById("dealItemOptions").innerHTML = dealItemChoices().map(c => `<option value="${esc(c.label)}"></option>`).join("");
+  const box = document.getElementById("dealEditor");
+  box.innerHTML = dealCardHTML(d, 0);
+  box.querySelectorAll("[data-deal-act]").forEach(b => b.addEventListener("click", () => dealAction(b)));
+  syncDealCard(box.querySelector("[data-deal]"));
+}
+function openDealEditor(i){
+  dealEditIndex = i;
+  const d = i >= 0 ? currentDeals()[i] : { id: "deal" + Date.now().toString(36), name: "New deal", enabled: false, type: "pair", windows: [], categories: [], items: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, stack: true, buttons: {} };
+  document.getElementById("dealModalTitle").textContent = i >= 0 ? `Edit ${d.name || "deal"}` : "Add a deal";
+  document.getElementById("dealModalRemove").hidden = i < 0;
+  document.getElementById("dealModalMsg").textContent = i >= 0 ? "" : "New deals start switched off.";
+  renderDealEditor(d);
+  document.getElementById("dealModal").hidden = false;
+  document.getElementById("dealEditor").querySelector("[data-deal-name]").focus();
+}
+function closeDealEditor(){ document.getElementById("dealModal").hidden = true; document.getElementById("dealEditor").innerHTML = ""; }
+document.getElementById("dealAdd").addEventListener("click", () => openDealEditor(-1));
+document.getElementById("dealModalCancel").addEventListener("click", closeDealEditor);
+document.getElementById("dealModalSave").addEventListener("click", async () => {
+  const d = readDealCard(document.querySelector("#dealEditor [data-deal]")), problems = dealProblems([d]);
+  if (problems.length) { document.getElementById("dealModalMsg").textContent = "Not saved. " + problems.join(". ") + "."; return; }
+  const deals = currentDeals();
+  if (dealEditIndex >= 0) deals[dealEditIndex] = d; else deals.push(d);
+  await saveDeals(deals);
+  closeDealEditor();
+});
+document.getElementById("dealModalRemove").addEventListener("click", async () => {
+  const deals = currentDeals(), d = deals[dealEditIndex];
+  if (!d || !confirm(`Remove ${d.name}?`)) return;
+  deals.splice(dealEditIndex, 1);
+  await saveDeals(deals);
+  closeDealEditor();
+});
+document.getElementById("dealRulesBtn").addEventListener("click", () => {
+  const best = venueDealRules && venueDealRules.overlap === "best";
+  document.querySelectorAll('input[name="dealOverlap"]').forEach(x => { x.checked = x.value === (best ? "best" : "order"); });
+  document.getElementById("dealRulesModal").hidden = false;
+});
+document.getElementById("dealRulesCancel").addEventListener("click", () => { document.getElementById("dealRulesModal").hidden = true; });
+document.getElementById("dealRulesSave").addEventListener("click", async () => {
+  await saveDeals(currentDeals(), { overlap: (document.querySelector('input[name="dealOverlap"]:checked') || {}).value || "order" });
+  document.getElementById("dealRulesModal").hidden = true;
+});
 // Typing or picking an item's label adds it; the label is matched back to its "Name|Size" value.
 function addDealItem(cover){
   const input = cover.querySelector("[data-deal-item-input]"), text = input.value.trim();
   if (!text) return;
   const choice = dealItemChoices().find(c => c.label.toLowerCase() === text.toLowerCase() || c.value.toLowerCase() === text.toLowerCase());
-  if (!choice) { document.getElementById("dealsMsg").textContent = `"${text}" isn't on this venue's menu. Pick it from the list as you type.`; return; }
+  if (!choice) { document.getElementById("dealModalMsg").textContent = `"${text}" isn't on this venue's menu. Pick it from the list as you type.`; return; }
   const box = cover.querySelector("[data-deal-items]");
   if (![...box.querySelectorAll("[data-item]")].some(x => x.dataset.item === choice.value))
     box.insertAdjacentHTML("beforeend", `<span class="deal-chip" data-item="${esc(choice.value)}">${esc(dealItemLabel(choice.value))}<button type="button" data-deal-item-remove aria-label="Take ${esc(dealItemLabel(choice.value))} off">×</button></span>`);
   input.value = "";
-  document.getElementById("dealsMsg").textContent = "Not saved yet.";
+  document.getElementById("dealModalMsg").textContent = "";
 }
-document.getElementById("dealsList").addEventListener("click", e => {
+document.getElementById("dealEditor").addEventListener("click", e => {
   const add = e.target.closest("[data-deal-item-add]"); if (add) { addDealItem(add.closest("[data-cover]")); return; }
-  const rm = e.target.closest("[data-deal-item-remove]"); if (rm) { rm.closest("[data-item]").remove(); document.getElementById("dealsMsg").textContent = "Not saved yet."; }
+  const rm = e.target.closest("[data-deal-item-remove]"); if (rm) rm.closest("[data-item]").remove();
 });
-document.getElementById("dealsList").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-deal-item-input]")) { e.preventDefault(); addDealItem(e.target.closest("[data-cover]")); } });
-document.getElementById("dealsList").addEventListener("change", e => { const card = e.target.closest("[data-deal]"); if (card) syncDealCard(card); });
+document.getElementById("dealEditor").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-deal-item-input]")) { e.preventDefault(); addDealItem(e.target.closest("[data-cover]")); } });
+document.getElementById("dealEditor").addEventListener("change", e => { const card = e.target.closest("[data-deal]"); if (card) syncDealCard(card); });
 function readCover(el){
   return { categories: [...el.querySelectorAll("[data-deal-cat]")].filter(x => x.checked).map(x => x.dataset.dealCat), items: [...el.querySelectorAll("[data-item]")].map(x => x.dataset.item) };
 }
-function readDeals(){
-  return [...document.querySelectorAll("#dealsList [data-deal]")].map(card => {
+function readDealCard(card){
+  {
     const i = card.dataset.deal, buttons = {}, q = sel => card.querySelector(sel), type = q("[data-deal-type]").value;
     card.querySelectorAll("[data-deal-button]").forEach(sel => { if (sel.value !== "allowed") buttons[sel.dataset.dealButton] = sel.value; });
     const main = readCover(q('[data-cover="main"]'));
@@ -3649,7 +3821,7 @@ function readDeals(){
       stack: q("[data-deal-stack]").checked, buttons
     };
     return d;
-  });
+  }
 }
 // A deal that needs a price says so before it's saved, rather than doing nothing on the till.
 function dealProblems(deals){
@@ -3665,23 +3837,13 @@ function dealProblems(deals){
   return out;
 }
 function dealAction(btn){
-  const deals = readDeals(), i = Number(btn.dataset.i);
-  if (btn.dataset.dealAct === "window-add") deals[i].windows.push({ days: [], from: "17:00", to: "19:00" });
-  if (btn.dataset.dealAct === "window-remove") deals[i].windows.splice(Number(btn.dataset.w), 1);
-  if (btn.dataset.dealAct === "part-add") deals[i].parts.push({ categories: [], items: [] });
-  if (btn.dataset.dealAct === "part-remove") deals[i].parts.splice(Number(btn.dataset.p), 1);
-  if (btn.dataset.dealAct === "remove") { if (!confirm(`Remove ${deals[i].name}?`)) return; deals.splice(i, 1); }
-  venueDealRules = { overlap: (document.querySelector('input[name="dealOverlap"]:checked') || {}).value || "order" };
-  renderDeals(deals);
-  document.getElementById("dealsMsg").textContent = "Not saved yet.";
+  const d = readDealCard(document.querySelector("#dealEditor [data-deal]"));
+  if (btn.dataset.dealAct === "window-add") d.windows.push({ days: [], from: "17:00", to: "19:00" });
+  if (btn.dataset.dealAct === "window-remove") d.windows.splice(Number(btn.dataset.w), 1);
+  if (btn.dataset.dealAct === "part-add") d.parts.push({ categories: [], items: [] });
+  if (btn.dataset.dealAct === "part-remove") d.parts.splice(Number(btn.dataset.p), 1);
+  renderDealEditor(d);
 }
-document.getElementById("dealAdd").addEventListener("click", () => {
-  const deals = readDeals();
-  venueDealRules = { overlap: (document.querySelector('input[name="dealOverlap"]:checked') || {}).value || "order" };
-  deals.push({ id: "deal" + Date.now().toString(36), name: "New deal", enabled: false, type: "pair", windows: [], categories: [], items: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, stack: true, buttons: {} });
-  renderDeals(deals);
-  document.getElementById("dealsMsg").textContent = "Not saved yet. New deals start switched off.";
-});
 function dealChanges(before, after){
   const typeName = d => (DEAL_TYPES.find(t => t[0] === (d.type || "pair")) || DEAL_TYPES[0])[1];
   const money = p => p == null ? "-" : fmt(p);
@@ -3698,21 +3860,6 @@ function dealChanges(before, after){
   after.forEach(d => { const old = b.get(d.id); if (!old) return; const x = desc(old), y = desc(d); const ch = Object.keys(y).filter(k => x[k] !== y[k]).map(k => `${k} ${x[k]} → ${y[k]}`); if (ch.length) out.push(`${old.name}: ${ch.join(", ")}`); });
   return out.join("; ") || "nothing changed";
 }
-document.getElementById("dealsSave").addEventListener("click", async () => {
-  const deals = readDeals(), dealsBefore = venueDeals || DEFAULT_DEALS, msg = document.getElementById("dealsMsg");
-  const problems = dealProblems(deals);
-  if (problems.length) { msg.textContent = "Not saved. " + problems.join(". ") + "."; return; }
-  const rules = { overlap: (document.querySelector('input[name="dealOverlap"]:checked') || {}).value || "order" };
-  const rulesBefore = venueDealRules && venueDealRules.overlap === "best" ? "best" : "order";
-  if (productsAllVenues) { for (const v of scopeVenueIds()) { await saveDocFor(v, LS_DEALS, deals); await saveDocFor(v, LS_DEAL_RULES, rules); } }
-  else { await saveDoc(LS_DEALS, deals); await saveDoc(LS_DEAL_RULES, rules); }
-  venueDeals = deals; venueDealRules = rules;
-  renderDeals();
-  msg.textContent = `Deals saved${productsAllVenues ? " at every venue" : ""}. Tills pick them up within a few seconds.`;
-  const ruleNote = rulesBefore !== rules.overlap ? `; when deals overlap: ${rules.overlap === "best" ? "best price for the customer" : "first deal in the list wins"}` : "";
-  logActivity("Changed deals", dealChanges(dealsBefore, deals) + ruleNote + (productsAllVenues ? " (every venue)" : ""), productsAllVenues ? null : undefined);
-});
-
 /* ---------- Discounts ---------- */
 function renderOfferList(){
   const wrap = document.getElementById("offerList");
@@ -3751,7 +3898,17 @@ document.getElementById("addOfferBtn").addEventListener("click", async () => {
   }
   logActivity("Added an offer", `${label} (${pct}%)`);
   document.getElementById("offerName").value = ""; document.getElementById("offerPct").value = "";
+  document.getElementById("offerModal").hidden = true;
   renderOfferList();
+});
+
+document.getElementById("openAddOfferBtn").addEventListener("click", () => { document.getElementById("offerModal").hidden = false; document.getElementById("offerName").focus(); });
+document.getElementById("offerModalCancel").addEventListener("click", () => { document.getElementById("offerModal").hidden = true; });
+// Escape closes the Discounts pop-ups without saving.
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (!document.getElementById("dealModal").hidden) closeDealEditor();
+  ["dealRulesModal", "offerModal"].forEach(id => { document.getElementById(id).hidden = true; });
 });
 
 /* ---------- Users ---------- */
@@ -4474,11 +4631,20 @@ async function loadNotificationsPage(){
     const current = u.managerSound || "";
     const ownPick = () => `Their own pick: ${soundLabel(u.notificationSound)}`;
     row.innerHTML = `<div class="info"><div class="name">${esc(u.name)}</div><div class="sub" data-sub>${esc(u.managerSound ? "Locked by a manager" : ownPick())}</div></div>
-      <div class="actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button type="button" class="btn btn-ghost btn-sm" data-change>Change</button>
+      <div class="actions" hidden style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <select aria-label="Notification sound for ${esc(u.name)}"><option value="">Let them choose</option>${options.map(([id, label]) => `<option value="${esc(id)}" ${id === current ? "selected" : ""}>${esc(label)}</option>`).join("")}</select>
         <button type="button" class="btn btn-ghost btn-sm" data-play>Play</button>
         <button type="button" class="btn btn-solid btn-sm" data-save disabled>Save</button></div>`;
-    const sel = row.querySelector("select"), saveBtn = row.querySelector("[data-save]");
+    const sel = row.querySelector("select"), saveBtn = row.querySelector("[data-save]"), actions = row.querySelector(".actions");
+    // Change opens the sound picker in a pop-up; closing it puts the picker back, hidden.
+    row.querySelector("[data-change]").addEventListener("click", () => {
+      document.getElementById("ntSoundTitle").textContent = `${u.name}'s notification sound`;
+      actions.hidden = false;
+      document.getElementById("ntSoundBody").replaceChildren(actions);
+      ntSoundClose = () => { actions.hidden = true; row.appendChild(actions); };
+      document.getElementById("ntSoundModal").hidden = false;
+    });
     sel.addEventListener("change", () => { saveBtn.disabled = sel.value === (u.managerSound || ""); });
     row.querySelector("[data-play]").addEventListener("click", () => {
       if (!ntPreviewCtx) { try { ntPreviewCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
@@ -4497,11 +4663,16 @@ async function loadNotificationsPage(){
       row.querySelector("[data-sub]").textContent = value ? "Locked by a manager" : ownPick();
       msg.textContent = value ? `Saved: ${u.name} now hears ${soundLabel(value)} and can't change it.` : `Saved: ${u.name} chooses again, back to ${soundLabel(u.notificationSound)}.`;
       logActivity("Changed a notification sound", `${u.name}: ${value ? soundLabel(value) + " (locked)" : "let them choose"}`, null);
+      closeNtSoundModal();
     });
     wrap.appendChild(row);
   });
 }
 document.getElementById("navNotifications").addEventListener("click", loadNotificationsPage);
+let ntSoundClose = null;
+function closeNtSoundModal(){ document.getElementById("ntSoundModal").hidden = true; if (ntSoundClose) ntSoundClose(); ntSoundClose = null; }
+document.getElementById("ntSoundClose").addEventListener("click", closeNtSoundModal);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !document.getElementById("ntSoundModal").hidden) closeNtSoundModal(); });
 
 async function renderSoundsList(){
   const wrap = document.getElementById("soundsList");
