@@ -211,6 +211,13 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .deal-choice legend{font-weight:700;font-size:13.5px;padding:0 4px;}
 .deal-card label.check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer;}
 .deal-card input[type="checkbox"],.deal-card input[type="radio"]{width:22px;height:22px;}
+.deal-card [hidden]{display:none !important;}
+.deal-items{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;}
+.deal-cats summary{cursor:pointer;font-weight:700;font-size:14px;min-height:44px;display:flex;align-items:center;}
+.deal-chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:4px 6px 4px 12px;font-size:14px;font-weight:600;}
+.deal-chip button{border:0;background:transparent;color:var(--text);font-size:18px;line-height:1;min-width:32px;min-height:32px;cursor:pointer;border-radius:50%;}
+.deal-item-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 4px;}
+.deal-item-add input{flex:1 1 240px;max-width:420px;}
 .hh-window{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 0;border-bottom:1px solid var(--border);}
 .hh-days{display:flex;flex-wrap:wrap;gap:4px 10px;}
 .hh-days label{display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:14px;}
@@ -336,7 +343,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261024c">
+<link rel="stylesheet" href="nipos.css?v=20261025a">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -866,7 +873,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261024c"></script>
+<script src="db.js?v=20261025a"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -996,6 +1003,7 @@ async function loadVenueData(){
 
   hhOverride = await loadDoc(LS_HH_OVERRIDE, null);
   venueDeals = await loadDoc(LS_DEALS, null);
+  venueDealRules = await loadDoc(LS_DEAL_RULES, null);
   const forced = effectiveDealsOverride(hhOverride);
   document.getElementById("hhMode").value = forced === true ? "on" : forced === false ? "off" : "auto";
 
@@ -1388,7 +1396,7 @@ async function copyVenueSetup(){
       if (mx.length) await supabaseClient.from("mixer_overrides").insert(mx.map(r => { const id = to + ":" + r.data.name; return { id, ts: r.ts, venue_id: to, data: { ...r.data, id } }; }));
       done.push(`${mx.length} mixer settings`);
     }
-    for (const [k, key, label] of [["deals", LS_DEALS, "deals"], ["deals", LS_HH_OVERRIDE, null], ["favourites", LS_FAVS, "favourites"]]) {
+    for (const [k, key, label] of [["deals", LS_DEALS, "deals"], ["deals", LS_DEAL_RULES, null], ["deals", LS_HH_OVERRIDE, null], ["favourites", LS_FAVS, "favourites"]]) {
       if (!what.has(k)) continue;
       const { data } = await supabaseClient.from("app_state").select("value").eq("key", from + ":state/" + key).maybeSingle();
       if (data) await saveDocFor(to, key, data.value); else await supabaseClient.from("app_state").delete().eq("key", to + ":state/" + key);
@@ -3500,12 +3508,41 @@ function dealButtonList(){
     .concat(customDiscounts.map(o => ({ key: "offer:" + o.label, label: o.label + " (custom offer)" })))
     .concat([{ key: "customPct", label: "Custom %" }, { key: "customOffer", label: "Custom price" }]);
 }
+// Every item a deal can name: "Name" (any size) or "Name|Pint" (one size, or Single/Double for spirits).
+function dealItemChoices(){
+  const catById = new Map(realCategories.map(c => [c.id, c])), out = [];
+  realItems.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(it => {
+    const cat = catById.get(it.categoryId), sizes = (it.sizes || []).map(z => z.label).filter(Boolean);
+    const variants = sizes.length ? sizes : cat && cat.isSpirit ? ["Single", "Double"] : [];
+    out.push({ value: it.name, label: variants.length ? `${it.name} (any)` : it.name });
+    variants.forEach(v => out.push({ value: `${it.name}|${v}`, label: `${it.name} (${v})` }));
+  });
+  return out.filter((x, i, a) => a.findIndex(y => y.value === x.value) === i);
+}
+const dealItemLabel = v => { const [n, z] = String(v).split("|"); return z ? `${n} (${z})` : n; };
+const penceToPounds = p => p != null && p !== "" ? (Number(p) / 100).toFixed(2) : "";
+const poundsToPence = v => { const n = parseFloat(v); return isFinite(n) && n >= 0 ? Math.round(n * 100) : null; };
+// What a deal (or one part of a bundle) covers: categories, and a list of chosen items with an add box.
+function dealCoverHTML(cover, key, legend){
+  const chosen = new Set(cover.categories || []);
+  return `<fieldset class="deal-choice deal-cover" data-cover="${key}"><legend>${legend}</legend>
+    <details class="deal-cats" ${chosen.size ? "open" : ""}><summary>Categories${chosen.size ? ` (${chosen.size} ticked)` : ""}</summary>
+    <div class="feature-people">${allCategoryNames().map(n => `<label><input type="checkbox" data-deal-cat="${esc(n)}" ${chosen.has(n) ? "checked" : ""}>${esc(n)}</label>`).join("") || `<span class="note">No categories at this venue yet.</span>`}</div></details>
+    <span class="field">Items</span>
+    <div class="deal-items" data-deal-items>${(cover.items || []).map(v => `<span class="deal-chip" data-item="${esc(v)}">${esc(dealItemLabel(v))}<button type="button" data-deal-item-remove aria-label="Take ${esc(dealItemLabel(v))} off">×</button></span>`).join("")}</div>
+    <div class="deal-item-add"><input type="text" list="dealItemOptions" data-deal-item-input placeholder="Add an item, e.g. Carling (Pint)" aria-label="Add an item"><button type="button" class="btn btn-ghost btn-sm" data-deal-item-add>Add item</button></div>
+  </fieldset>`;
+}
+const DEAL_TYPES = [["pair", "Buy two (a pair)"], ["price", "Set price each"], ["multibuy", "Multi-buy (so many for a price)"], ["bundle", "Bundle (one from each part for a price)"], ["percent", "Percentage off each"]];
 function dealCardHTML(d, i){
-  const cats = drinkCategoryNames(), chosen = new Set(d.categories || []);
-  const windows = d.windows || [];
-  return `<div class="card deal-card" data-deal="${i}" data-id="${esc(d.id)}">
+  const windows = d.windows || [], type = ["price", "multibuy", "bundle", "percent"].includes(d.type) ? d.type : "pair";
+  const which = ["dearer", "fixed", "matchCheaper"].includes(d.discounted) ? d.discounted : "cheaper";
+  const parts = d.parts && d.parts.length ? d.parts : [{ categories: [], items: [] }, { categories: [], items: [] }];
+  return `<div class="card deal-card" data-deal="${i}" data-id="${esc(d.id)}" data-type="${type}">
     <div class="deal-head"><label class="field" for="dealName${i}">Deal name</label><input type="text" id="dealName${i}" data-deal-name value="${esc(d.name || "")}" maxlength="30">
       <label class="check"><input type="checkbox" data-deal-on ${d.enabled !== false ? "checked" : ""}>Switched on</label></div>
+    <label class="field" for="dealType${i}">Type of deal</label>
+    <select id="dealType${i}" data-deal-type style="max-width:360px;">${DEAL_TYPES.map(([v, l]) => `<option value="${v}" ${v === type ? "selected" : ""}>${l}</option>`).join("")}</select>
     <span class="field">When it's on (no times = all day)</span>
     ${windows.map((w, wi) => `<div class="hh-window" data-deal-window>
       <div class="hh-days" role="group" aria-label="Days">${DAY_NAMES.map((dn, di) => `<label><input type="checkbox" data-day="${di}" ${!w.days || !w.days.length || w.days.includes(di) ? "checked" : ""}>${dn}</label>`).join("")}</div>
@@ -3513,59 +3550,145 @@ function dealCardHTML(d, i){
       <label>Until <input type="time" data-to value="${w.to === "close" || w.to === "24:00" || !w.to ? "" : esc(w.to)}"></label><span class="note">(empty = close)</span>
       <button type="button" class="btn btn-ghost btn-sm" data-deal-act="window-remove" data-i="${i}" data-w="${wi}">Remove</button></div>`).join("")}
     <div class="feature-actions"><button type="button" class="btn btn-ghost btn-sm" data-deal-act="window-add" data-i="${i}">Add a time</button></div>
-    <span class="field">Which categories count (none ticked = Cocktails)</span>
-    <div class="feature-people">${cats.map(n => `<label><input type="checkbox" data-deal-cat="${esc(n)}" ${chosen.has(n) ? "checked" : ""}>${esc(n)}</label>`).join("") || `<span class="note">No categories at this venue yet.</span>`}</div>
-    <fieldset class="deal-choice"><legend>What makes a pair</legend>
-      <label class="check"><input type="radio" name="dealPair${i}" value="selection" ${d.pairFrom !== "sameProduct" ? "checked" : ""}>Any two from the categories above</label>
-      <label class="check"><input type="radio" name="dealPair${i}" value="sameProduct" ${d.pairFrom === "sameProduct" ? "checked" : ""}>Two of the same product</label>
-      <label class="check"><input type="checkbox" data-deal-same-price ${d.samePrice ? "checked" : ""}>Only when both cost the same</label></fieldset>
-    <fieldset class="deal-choice"><legend>Which one gets money off</legend>
-      <label class="check"><input type="radio" name="dealWhich${i}" value="cheaper" ${d.discounted !== "dearer" ? "checked" : ""}>The cheaper one</label>
-      <label class="check"><input type="radio" name="dealWhich${i}" value="dearer" ${d.discounted === "dearer" ? "checked" : ""}>The more expensive one</label></fieldset>
-    <label class="field" for="dealPct${i}">How much off it (%)</label><input type="number" id="dealPct${i}" data-deal-pct min="1" max="100" step="5" value="${Number(d.pct) || 50}" style="max-width:120px;">
+    <div data-for-type="pair price multibuy percent">${dealCoverHTML(d, "main", "What it covers: tick categories and/or add items (a buy-two deal with nothing chosen covers Cocktails)")}</div>
+    <div data-for-type="pair">
+      <fieldset class="deal-choice"><legend>What makes a pair</legend>
+        <label class="check"><input type="radio" name="dealPair${i}" value="selection" ${d.pairFrom !== "sameProduct" ? "checked" : ""}>Any two of what it covers</label>
+        <label class="check"><input type="radio" name="dealPair${i}" value="sameProduct" ${d.pairFrom === "sameProduct" ? "checked" : ""}>Two of the same product</label>
+        <label class="check"><input type="checkbox" data-deal-same-price ${d.samePrice ? "checked" : ""}>Only when both cost the same</label></fieldset>
+      <fieldset class="deal-choice"><legend>The pair's price</legend>
+        <label class="check"><input type="radio" name="dealWhich${i}" value="cheaper" ${which === "cheaper" ? "checked" : ""}>The cheaper one gets money off</label>
+        <label class="check"><input type="radio" name="dealWhich${i}" value="dearer" ${which === "dearer" ? "checked" : ""}>The more expensive one gets money off</label>
+        <label class="check"><input type="radio" name="dealWhich${i}" value="matchCheaper" ${which === "matchCheaper" ? "checked" : ""}>Both at the cheaper one's price</label>
+        <label class="check"><input type="radio" name="dealWhich${i}" value="fixed" ${which === "fixed" ? "checked" : ""}>Both together for a set price</label></fieldset>
+      <div data-pair-pct><label class="field" for="dealPct${i}">How much off it (%)</label><input type="number" id="dealPct${i}" data-deal-pct min="1" max="100" step="5" value="${Number(d.pct) || 50}" style="max-width:120px;"></div>
+      <div data-pair-fixed><label class="field" for="dealPairPrice${i}">Price for the two (£)</label><input type="number" id="dealPairPrice${i}" data-deal-pair-price min="0" step="0.05" value="${penceToPounds(d.pairPence)}" style="max-width:140px;"></div>
+    </div>
+    <div data-for-type="price"><label class="field" for="dealPrice${i}">Price each (£)</label><input type="number" id="dealPrice${i}" data-deal-price min="0" step="0.05" value="${penceToPounds(d.pricePence)}" style="max-width:140px;"></div>
+    <div data-for-type="percent"><label class="field" for="dealPctEach${i}">How much off each (%)</label><input type="number" id="dealPctEach${i}" data-deal-pct-each min="1" max="100" step="5" value="${Number(d.pct) || 20}" style="max-width:120px;"></div>
+    <div data-for-type="multibuy">
+      <div class="deal-head"><label class="field" for="dealBuy${i}">How many</label><input type="number" id="dealBuy${i}" data-deal-buy min="2" max="20" step="1" value="${Number(d.buyQty) || 3}" style="max-width:100px;">
+        <label class="field" for="dealFor${i}">for (£)</label><input type="number" id="dealFor${i}" data-deal-for min="0" step="0.05" value="${penceToPounds(d.forPence)}" style="max-width:140px;"></div>
+      <fieldset class="deal-choice"><legend>Which ones count together</legend>
+        <label class="check"><input type="radio" name="dealMix${i}" value="selection" ${d.pairFrom !== "sameProduct" ? "checked" : ""}>Mix and match anything it covers</label>
+        <label class="check"><input type="radio" name="dealMix${i}" value="sameProduct" ${d.pairFrom === "sameProduct" ? "checked" : ""}>Only the same product</label></fieldset>
+    </div>
+    <div data-for-type="bundle">
+      ${parts.map((pt, pi) => `<div data-bundle-part>${dealCoverHTML(pt, "part" + pi, `Part ${pi + 1}: one of these`)}${parts.length > 2 ? `<button type="button" class="btn btn-ghost btn-sm" data-deal-act="part-remove" data-i="${i}" data-p="${pi}">Remove part ${pi + 1}</button>` : ""}</div>`).join("")}
+      <div class="feature-actions"><button type="button" class="btn btn-ghost btn-sm" data-deal-act="part-add" data-i="${i}">Add another part</button></div>
+      <label class="field" for="dealBundle${i}">Bundle price (£)</label><input type="number" id="dealBundle${i}" data-deal-bundle min="0" step="0.05" value="${penceToPounds(d.bundlePence)}" style="max-width:140px;">
+    </div>
+    <p class="note">Mixers, cordials and Lemonade Top are added on at full price; the deal prices the drink itself.</p>
     <span class="field">Discount buttons while this deal is on</span>
     <table class="feature-table"><tbody>${dealButtonList().map(b => { const v = (d.buttons || {})[b.key] || "allowed"; return `<tr><th scope="row">${esc(b.label)}</th><td><select data-deal-button="${esc(b.key)}" aria-label="${esc(b.label)} during ${esc(d.name || "this deal")}">
       <option value="allowed" ${v === "allowed" ? "selected" : ""}>Allowed</option><option value="notOnDeal" ${v === "notOnDeal" ? "selected" : ""}>Not on this deal's items</option><option value="off" ${v === "off" ? "selected" : ""}>Switched off</option></select></td></tr>`; }).join("")}</tbody></table>
     <div class="feature-actions"><button type="button" class="btn btn-danger btn-sm" data-deal-act="remove" data-i="${i}">Remove this deal</button></div>
   </div>`;
 }
+// Shows only the settings for the deal's type, and the % or £ box for the pair's price.
+function syncDealCard(card){
+  const type = card.querySelector("[data-deal-type]").value;
+  card.dataset.type = type;
+  card.querySelectorAll("[data-for-type]").forEach(el => { el.hidden = !el.dataset.forType.split(" ").includes(type); });
+  const which = (card.querySelector(`input[name="dealWhich${card.dataset.deal}"]:checked`) || {}).value;
+  card.querySelector("[data-pair-pct]").hidden = which === "fixed" || which === "matchCheaper";
+  card.querySelector("[data-pair-fixed]").hidden = which !== "fixed";
+}
+const LS_DEAL_RULES = "starlightTill.dealRules.v1";
+let venueDealRules = null;
 function renderDeals(list){
   const deals = list || venueDeals || DEFAULT_DEALS;
-  document.getElementById("dealsList").innerHTML = deals.map(dealCardHTML).join("") || `<div class="empty">No deals. Add one below.</div>`;
+  const wrap = document.getElementById("dealsList");
+  wrap.innerHTML = `<datalist id="dealItemOptions">${dealItemChoices().map(c => `<option value="${esc(c.label)}"></option>`).join("")}</datalist>`
+    + `<fieldset class="deal-choice" id="dealOverlap"><legend>When more than one deal could apply to the same drink</legend>
+      <label class="check"><input type="radio" name="dealOverlap" value="order" ${!(venueDealRules && venueDealRules.overlap === "best") ? "checked" : ""}>The first deal in this list wins</label>
+      <label class="check"><input type="radio" name="dealOverlap" value="best" ${venueDealRules && venueDealRules.overlap === "best" ? "checked" : ""}>Whichever gives the customer the best price</label></fieldset>`
+    + (deals.map(dealCardHTML).join("") || `<div class="empty">No deals. Add one below.</div>`);
   document.getElementById("dealsScopeNote").textContent = productsAllVenues ? `Showing ${currentVenue ? currentVenue.name : "this venue"}'s deals. Saving copies them to every venue.` : (venueDeals ? "" : "These are the original Happy Hour settings. Nothing is saved for this venue yet.");
-  document.getElementById("dealsList").querySelectorAll("[data-deal-act]").forEach(b => b.addEventListener("click", () => dealAction(b)));
+  wrap.querySelectorAll("[data-deal-act]").forEach(b => b.addEventListener("click", () => dealAction(b)));
+  wrap.querySelectorAll("[data-deal]").forEach(syncDealCard);
+}
+// Typing or picking an item's label adds it; the label is matched back to its "Name|Size" value.
+function addDealItem(cover){
+  const input = cover.querySelector("[data-deal-item-input]"), text = input.value.trim();
+  if (!text) return;
+  const choice = dealItemChoices().find(c => c.label.toLowerCase() === text.toLowerCase() || c.value.toLowerCase() === text.toLowerCase());
+  if (!choice) { document.getElementById("dealsMsg").textContent = `"${text}" isn't on this venue's menu. Pick it from the list as you type.`; return; }
+  const box = cover.querySelector("[data-deal-items]");
+  if (![...box.querySelectorAll("[data-item]")].some(x => x.dataset.item === choice.value))
+    box.insertAdjacentHTML("beforeend", `<span class="deal-chip" data-item="${esc(choice.value)}">${esc(dealItemLabel(choice.value))}<button type="button" data-deal-item-remove aria-label="Take ${esc(dealItemLabel(choice.value))} off">×</button></span>`);
+  input.value = "";
+  document.getElementById("dealsMsg").textContent = "Not saved yet.";
+}
+document.getElementById("dealsList").addEventListener("click", e => {
+  const add = e.target.closest("[data-deal-item-add]"); if (add) { addDealItem(add.closest("[data-cover]")); return; }
+  const rm = e.target.closest("[data-deal-item-remove]"); if (rm) { rm.closest("[data-item]").remove(); document.getElementById("dealsMsg").textContent = "Not saved yet."; }
+});
+document.getElementById("dealsList").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-deal-item-input]")) { e.preventDefault(); addDealItem(e.target.closest("[data-cover]")); } });
+document.getElementById("dealsList").addEventListener("change", e => { const card = e.target.closest("[data-deal]"); if (card) syncDealCard(card); });
+function readCover(el){
+  return { categories: [...el.querySelectorAll("[data-deal-cat]")].filter(x => x.checked).map(x => x.dataset.dealCat), items: [...el.querySelectorAll("[data-item]")].map(x => x.dataset.item) };
 }
 function readDeals(){
   return [...document.querySelectorAll("#dealsList [data-deal]")].map(card => {
-    const i = card.dataset.deal, buttons = {};
+    const i = card.dataset.deal, buttons = {}, q = sel => card.querySelector(sel), type = q("[data-deal-type]").value;
     card.querySelectorAll("[data-deal-button]").forEach(sel => { if (sel.value !== "allowed") buttons[sel.dataset.dealButton] = sel.value; });
-    return {
-      id: card.dataset.id, name: card.querySelector("[data-deal-name]").value.trim() || "Deal", enabled: card.querySelector("[data-deal-on]").checked,
+    const main = readCover(q('[data-cover="main"]'));
+    const d = {
+      id: card.dataset.id, name: q("[data-deal-name]").value.trim() || "Deal", enabled: q("[data-deal-on]").checked, type,
       windows: [...card.querySelectorAll("[data-deal-window]")].map(w => { const days = [...w.querySelectorAll("[data-day]")].filter(x => x.checked).map(x => Number(x.dataset.day)); return { days: days.length === 7 ? [] : days, from: w.querySelector("[data-from]").value || "00:00", to: w.querySelector("[data-to]").value || "close" }; }),
-      categories: [...card.querySelectorAll("[data-deal-cat]")].filter(x => x.checked).map(x => x.dataset.dealCat),
-      pairFrom: card.querySelector(`input[name="dealPair${i}"]:checked`).value, samePrice: card.querySelector("[data-deal-same-price]").checked,
-      discounted: card.querySelector(`input[name="dealWhich${i}"]:checked`).value, pct: Math.max(1, Math.min(100, Number(card.querySelector("[data-deal-pct]").value) || 50)), buttons
+      categories: main.categories, items: main.items,
+      pairFrom: (q(`input[name="${type === "multibuy" ? "dealMix" : "dealPair"}${i}"]:checked`) || {}).value || "selection", samePrice: q("[data-deal-same-price]").checked,
+      discounted: (q(`input[name="dealWhich${i}"]:checked`) || {}).value || "cheaper",
+      pct: Math.max(1, Math.min(100, Number(q(type === "percent" ? "[data-deal-pct-each]" : "[data-deal-pct]").value) || 50)),
+      pairPence: poundsToPence(q("[data-deal-pair-price]").value), pricePence: poundsToPence(q("[data-deal-price]").value),
+      buyQty: Math.max(2, Math.min(20, Number(q("[data-deal-buy]").value) || 3)), forPence: poundsToPence(q("[data-deal-for]").value),
+      parts: [...card.querySelectorAll("[data-bundle-part]")].map(pt => readCover(pt.querySelector("[data-cover]"))), bundlePence: poundsToPence(q("[data-deal-bundle]").value),
+      buttons
     };
+    return d;
   });
+}
+// A deal that needs a price says so before it's saved, rather than doing nothing on the till.
+function dealProblems(deals){
+  const out = [];
+  deals.forEach(d => {
+    if (d.type === "price" && d.pricePence == null) out.push(`${d.name}: enter the price each`);
+    if (d.type === "multibuy" && d.forPence == null) out.push(`${d.name}: enter the multi-buy price`);
+    if (d.type === "bundle" && d.bundlePence == null) out.push(`${d.name}: enter the bundle price`);
+    if (d.type === "bundle" && d.parts.filter(p => p.categories.length || p.items.length).length < 2) out.push(`${d.name}: a bundle needs at least two parts with something in them`);
+    if (d.type === "pair" && d.discounted === "fixed" && d.pairPence == null) out.push(`${d.name}: enter the price for the two`);
+    if (d.type !== "pair" && d.type !== "bundle" && !d.categories.length && !d.items.length) out.push(`${d.name}: choose what it covers`);
+  });
+  return out;
 }
 function dealAction(btn){
   const deals = readDeals(), i = Number(btn.dataset.i);
   if (btn.dataset.dealAct === "window-add") deals[i].windows.push({ days: [], from: "17:00", to: "19:00" });
   if (btn.dataset.dealAct === "window-remove") deals[i].windows.splice(Number(btn.dataset.w), 1);
+  if (btn.dataset.dealAct === "part-add") deals[i].parts.push({ categories: [], items: [] });
+  if (btn.dataset.dealAct === "part-remove") deals[i].parts.splice(Number(btn.dataset.p), 1);
   if (btn.dataset.dealAct === "remove") { if (!confirm(`Remove ${deals[i].name}?`)) return; deals.splice(i, 1); }
+  venueDealRules = { overlap: (document.querySelector('input[name="dealOverlap"]:checked') || {}).value || "order" };
   renderDeals(deals);
   document.getElementById("dealsMsg").textContent = "Not saved yet.";
 }
 document.getElementById("dealAdd").addEventListener("click", () => {
   const deals = readDeals();
-  deals.push({ id: "deal" + Date.now().toString(36), name: "New deal", enabled: false, windows: [], categories: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, buttons: {} });
+  venueDealRules = { overlap: (document.querySelector('input[name="dealOverlap"]:checked') || {}).value || "order" };
+  deals.push({ id: "deal" + Date.now().toString(36), name: "New deal", enabled: false, type: "pair", windows: [], categories: [], items: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, buttons: {} });
   renderDeals(deals);
   document.getElementById("dealsMsg").textContent = "Not saved yet. New deals start switched off.";
 });
 function dealChanges(before, after){
-  const desc = d => ({ name: d.name, "switched on": d.enabled !== false ? "yes" : "no", times: (d.windows || []).map(w => `${w.days && w.days.length ? w.days.map(x => DAY_NAMES[x]).join("/") + " " : ""}${w.from}-${w.to}`).join(", ") || "all day",
-    categories: (d.categories || []).join(", ") || "Cocktails", pair: d.pairFrom === "sameProduct" ? "same product" : "any two", "same price only": d.samePrice ? "yes" : "no",
-    "money off": `${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${d.pct}%`, buttons: Object.entries(d.buttons || {}).map(([k, v]) => `${k} ${v}`).join(", ") || "all allowed" });
+  const typeName = d => (DEAL_TYPES.find(t => t[0] === (d.type || "pair")) || DEAL_TYPES[0])[1];
+  const money = p => p == null ? "-" : fmt(p);
+  const desc = d => ({ name: d.name, type: typeName(d), "switched on": d.enabled !== false ? "yes" : "no", times: (d.windows || []).map(w => `${w.days && w.days.length ? w.days.map(x => DAY_NAMES[x]).join("/") + " " : ""}${w.from}-${w.to}`).join(", ") || "all day",
+    covers: [...(d.categories || []), ...(d.items || []).map(dealItemLabel)].join(", ") || ((d.type || "pair") === "pair" ? "Cocktails" : "nothing"),
+    pair: d.pairFrom === "sameProduct" ? "same product" : "any", "same price only": d.samePrice ? "yes" : "no",
+    "money off": (d.type || "pair") === "pair" ? (d.discounted === "fixed" ? `both for ${money(d.pairPence)}` : d.discounted === "matchCheaper" ? "both at the cheaper price" : `${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${d.pct}%`)
+      : d.type === "price" ? `${money(d.pricePence)} each` : d.type === "percent" ? `${d.pct}% off` : d.type === "multibuy" ? `${d.buyQty} for ${money(d.forPence)}` : `bundle ${money(d.bundlePence)}: ${(d.parts || []).map(p => [...p.categories, ...p.items.map(dealItemLabel)].join("/")).join(" + ")}`,
+    buttons: Object.entries(d.buttons || {}).map(([k, v]) => `${k} ${v}`).join(", ") || "all allowed" });
   const b = new Map((before || []).map(d => [d.id, d])), a = new Map(after.map(d => [d.id, d])), out = [];
   after.forEach(d => { if (!b.has(d.id)) out.push(`added ${d.name}`); });
   (before || []).forEach(d => { if (!a.has(d.id)) out.push(`removed ${d.name}`); });
@@ -3573,13 +3696,18 @@ function dealChanges(before, after){
   return out.join("; ") || "nothing changed";
 }
 document.getElementById("dealsSave").addEventListener("click", async () => {
-  const deals = readDeals(), dealsBefore = venueDeals || DEFAULT_DEALS;
-  if (productsAllVenues) { for (const v of scopeVenueIds()) await saveDocFor(v, LS_DEALS, deals); }
-  else await saveDoc(LS_DEALS, deals);
-  venueDeals = deals;
+  const deals = readDeals(), dealsBefore = venueDeals || DEFAULT_DEALS, msg = document.getElementById("dealsMsg");
+  const problems = dealProblems(deals);
+  if (problems.length) { msg.textContent = "Not saved. " + problems.join(". ") + "."; return; }
+  const rules = { overlap: (document.querySelector('input[name="dealOverlap"]:checked') || {}).value || "order" };
+  const rulesBefore = venueDealRules && venueDealRules.overlap === "best" ? "best" : "order";
+  if (productsAllVenues) { for (const v of scopeVenueIds()) { await saveDocFor(v, LS_DEALS, deals); await saveDocFor(v, LS_DEAL_RULES, rules); } }
+  else { await saveDoc(LS_DEALS, deals); await saveDoc(LS_DEAL_RULES, rules); }
+  venueDeals = deals; venueDealRules = rules;
   renderDeals();
-  document.getElementById("dealsMsg").textContent = `Deals saved${productsAllVenues ? " at every venue" : ""}. Tills pick them up within a few seconds.`;
-  logActivity("Changed deals", dealChanges(dealsBefore, deals) + (productsAllVenues ? " (every venue)" : ""), productsAllVenues ? null : undefined);
+  msg.textContent = `Deals saved${productsAllVenues ? " at every venue" : ""}. Tills pick them up within a few seconds.`;
+  const ruleNote = rulesBefore !== rules.overlap ? `; when deals overlap: ${rules.overlap === "best" ? "best price for the customer" : "first deal in the list wins"}` : "";
+  logActivity("Changed deals", dealChanges(dealsBefore, deals) + ruleNote + (productsAllVenues ? " (every venue)" : ""), productsAllVenues ? null : undefined);
 });
 
 /* ---------- Discounts ---------- */
