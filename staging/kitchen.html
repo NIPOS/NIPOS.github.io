@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<script>
+/* STAGING copy of NIPOS. Everything it saves in this browser is filed under "nipos-staging:", so it
+   stays apart from production, which shares this website. */
+(function () {
+  var P = "nipos-staging:", S = Storage.prototype, g = S.getItem, s = S.setItem, r = S.removeItem;
+  S.getItem = function (k) { return g.call(this, P + k); };
+  S.setItem = function (k, v) { return s.call(this, P + k, v); };
+  S.removeItem = function (k) { return r.call(this, P + k); };
+  // The pages rename their own tab (venue, screen); keep STAGING at the front of it.
+  function tag() { if (document.title.indexOf("STAGING") !== 0) document.title = "STAGING · " + document.title; }
+  new MutationObserver(tag).observe(document.documentElement, { subtree: true, childList: true, characterData: true });
+  document.addEventListener("DOMContentLoaded", function () {
+    tag();
+    var b = document.createElement("div");
+    b.textContent = "STAGING";
+    b.setAttribute("aria-hidden", "true");
+    b.style.cssText = "position:fixed;top:max(4px, env(safe-area-inset-top, 0px));left:50%;transform:translateX(-50%);z-index:2147483647;pointer-events:none;background:#e65100;color:#fff;font:800 11px/1 system-ui,sans-serif;letter-spacing:.14em;padding:4px 10px;border-radius:0 0 6px 6px;opacity:.92";
+    document.body.appendChild(b);
+  });
+})();
+</script>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>STAGING · NIPOS Kitchen View</title>
+<link rel="manifest" href="manifest-kitchen.json">
+<meta name="theme-color" content="#0c1826">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kitchen">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>body{background:#0c1826;color:#fff;font-family:system-ui,sans-serif;margin:0;padding:40px 20px;}a{color:#fff;}</style>
+<script>
+// The kitchen's screen is the order screen showing only the food (Master settings > Kitchen screen).
+location.replace("orders.html?station=kitchen&from=" + encodeURIComponent(location.pathname) + location.hash);
+</script>
+</head>
+<body>
+<p>Opening the kitchen screen… <a href="orders.html?station=kitchen">Open it</a></p>
+</body>
+</html>
