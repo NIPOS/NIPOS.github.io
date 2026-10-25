@@ -343,7 +343,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261025a">
+<link rel="stylesheet" href="nipos.css?v=20261025b">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -873,7 +873,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261025a"></script>
+<script src="db.js?v=20261025b"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -3536,7 +3536,7 @@ function dealCoverHTML(cover, key, legend){
 const DEAL_TYPES = [["pair", "Buy two (a pair)"], ["price", "Set price each"], ["multibuy", "Multi-buy (so many for a price)"], ["bundle", "Bundle (one from each part for a price)"], ["percent", "Percentage off each"]];
 function dealCardHTML(d, i){
   const windows = d.windows || [], type = ["price", "multibuy", "bundle", "percent"].includes(d.type) ? d.type : "pair";
-  const which = ["dearer", "fixed", "matchCheaper"].includes(d.discounted) ? d.discounted : "cheaper";
+  const which = ["dearer", "fixed", "matchCheaper", "samePriceOne"].includes(d.discounted) ? d.discounted : "cheaper";
   const parts = d.parts && d.parts.length ? d.parts : [{ categories: [], items: [] }, { categories: [], items: [] }];
   return `<div class="card deal-card" data-deal="${i}" data-id="${esc(d.id)}" data-type="${type}">
     <div class="deal-head"><label class="field" for="dealName${i}">Deal name</label><input type="text" id="dealName${i}" data-deal-name value="${esc(d.name || "")}" maxlength="30">
@@ -3560,6 +3560,7 @@ function dealCardHTML(d, i){
         <label class="check"><input type="radio" name="dealWhich${i}" value="cheaper" ${which === "cheaper" ? "checked" : ""}>The cheaper one gets money off</label>
         <label class="check"><input type="radio" name="dealWhich${i}" value="dearer" ${which === "dearer" ? "checked" : ""}>The more expensive one gets money off</label>
         <label class="check"><input type="radio" name="dealWhich${i}" value="matchCheaper" ${which === "matchCheaper" ? "checked" : ""}>Both at the cheaper one's price</label>
+        <label class="check"><input type="radio" name="dealWhich${i}" value="samePriceOne" ${which === "samePriceOne" ? "checked" : ""}>Two the same price: one of them gets money off</label>
         <label class="check"><input type="radio" name="dealWhich${i}" value="fixed" ${which === "fixed" ? "checked" : ""}>Both together for a set price</label></fieldset>
       <div data-pair-pct><label class="field" for="dealPct${i}">How much off it (%)</label><input type="number" id="dealPct${i}" data-deal-pct min="1" max="100" step="5" value="${Number(d.pct) || 50}" style="max-width:120px;"></div>
       <div data-pair-fixed><label class="field" for="dealPairPrice${i}">Price for the two (£)</label><input type="number" id="dealPairPrice${i}" data-deal-pair-price min="0" step="0.05" value="${penceToPounds(d.pairPence)}" style="max-width:140px;"></div>
@@ -3578,6 +3579,7 @@ function dealCardHTML(d, i){
       <div class="feature-actions"><button type="button" class="btn btn-ghost btn-sm" data-deal-act="part-add" data-i="${i}">Add another part</button></div>
       <label class="field" for="dealBundle${i}">Bundle price (£)</label><input type="number" id="dealBundle${i}" data-deal-bundle min="0" step="0.05" value="${penceToPounds(d.bundlePence)}" style="max-width:140px;">
     </div>
+    <label class="check"><input type="checkbox" data-deal-stack ${d.stack !== false ? "checked" : ""}>Stacks: applies to every pair or set in one order (untick for once per order)</label>
     <p class="note">Mixers, cordials and Lemonade Top are added on at full price; the deal prices the drink itself.</p>
     <span class="field">Discount buttons while this deal is on</span>
     <table class="feature-table"><tbody>${dealButtonList().map(b => { const v = (d.buttons || {})[b.key] || "allowed"; return `<tr><th scope="row">${esc(b.label)}</th><td><select data-deal-button="${esc(b.key)}" aria-label="${esc(b.label)} during ${esc(d.name || "this deal")}">
@@ -3644,7 +3646,7 @@ function readDeals(){
       pairPence: poundsToPence(q("[data-deal-pair-price]").value), pricePence: poundsToPence(q("[data-deal-price]").value),
       buyQty: Math.max(2, Math.min(20, Number(q("[data-deal-buy]").value) || 3)), forPence: poundsToPence(q("[data-deal-for]").value),
       parts: [...card.querySelectorAll("[data-bundle-part]")].map(pt => readCover(pt.querySelector("[data-cover]"))), bundlePence: poundsToPence(q("[data-deal-bundle]").value),
-      buttons
+      stack: q("[data-deal-stack]").checked, buttons
     };
     return d;
   });
@@ -3676,7 +3678,7 @@ function dealAction(btn){
 document.getElementById("dealAdd").addEventListener("click", () => {
   const deals = readDeals();
   venueDealRules = { overlap: (document.querySelector('input[name="dealOverlap"]:checked') || {}).value || "order" };
-  deals.push({ id: "deal" + Date.now().toString(36), name: "New deal", enabled: false, type: "pair", windows: [], categories: [], items: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, buttons: {} });
+  deals.push({ id: "deal" + Date.now().toString(36), name: "New deal", enabled: false, type: "pair", windows: [], categories: [], items: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, stack: true, buttons: {} });
   renderDeals(deals);
   document.getElementById("dealsMsg").textContent = "Not saved yet. New deals start switched off.";
 });
@@ -3686,8 +3688,9 @@ function dealChanges(before, after){
   const desc = d => ({ name: d.name, type: typeName(d), "switched on": d.enabled !== false ? "yes" : "no", times: (d.windows || []).map(w => `${w.days && w.days.length ? w.days.map(x => DAY_NAMES[x]).join("/") + " " : ""}${w.from}-${w.to}`).join(", ") || "all day",
     covers: [...(d.categories || []), ...(d.items || []).map(dealItemLabel)].join(", ") || ((d.type || "pair") === "pair" ? "Cocktails" : "nothing"),
     pair: d.pairFrom === "sameProduct" ? "same product" : "any", "same price only": d.samePrice ? "yes" : "no",
-    "money off": (d.type || "pair") === "pair" ? (d.discounted === "fixed" ? `both for ${money(d.pairPence)}` : d.discounted === "matchCheaper" ? "both at the cheaper price" : `${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${d.pct}%`)
+    "money off": (d.type || "pair") === "pair" ? (d.discounted === "fixed" ? `both for ${money(d.pairPence)}` : d.discounted === "matchCheaper" ? "both at the cheaper price" : d.discounted === "samePriceOne" ? `two the same price, one ${d.pct}%` : `${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${d.pct}%`)
       : d.type === "price" ? `${money(d.pricePence)} each` : d.type === "percent" ? `${d.pct}% off` : d.type === "multibuy" ? `${d.buyQty} for ${money(d.forPence)}` : `bundle ${money(d.bundlePence)}: ${(d.parts || []).map(p => [...p.categories, ...p.items.map(dealItemLabel)].join("/")).join(" + ")}`,
+    stacks: d.stack === false ? "once per order" : "yes",
     buttons: Object.entries(d.buttons || {}).map(([k, v]) => `${k} ${v}`).join(", ") || "all allowed" });
   const b = new Map((before || []).map(d => [d.id, d])), a = new Map(after.map(d => [d.id, d])), out = [];
   after.forEach(d => { if (!b.has(d.id)) out.push(`added ${d.name}`); });

@@ -326,8 +326,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261025a">
-<link rel="stylesheet" href="layouts.css?v=20261025a">
+<link rel="stylesheet" href="nipos.css?v=20261025b">
+<link rel="stylesheet" href="layouts.css?v=20261025b">
 </head>
 <body>
 
@@ -763,7 +763,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261025a"></script>
+<script src="db.js?v=20261025b"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1278,7 +1278,8 @@ function cartCount(){ return Object.values(cart).reduce((s,q) => s+q, 0); }
 // --- Deals (Backend > Discounts, per venue). Each deal has a name, its times, a switch, how each
 // discount button behaves while it's on, and one of five types:
 //   pair      buy two: the cheaper or dearer one % off, both for a set price, or both at the cheaper
-//             one's price (optionally only two of the same product, or only two at the same price)
+//             one's price, or of two at the same price one gets % off (optionally only two of the same
+//             product, or only two at the same price)
 //   price     a set price for each one (e.g. Carling pint £3.50)
 //   multibuy  so many for a set price (e.g. 3 Jägerbombs for £10)
 //   bundle    one from each part for a set price (e.g. a burger and a pint for £12)
@@ -1286,6 +1287,8 @@ function cartCount(){ return Object.values(cart).reduce((s,q) => s+q, 0); }
 // What a deal covers: whole categories and/or chosen items ("Name" for any size, "Name|Pint" for one).
 // A pair deal with nothing chosen covers Cocktails, as the original Happy Hour did. Mixers and pint
 // extras are never discounted: a deal prices the drink and they're added on top. Until a venue saves
+// A deal with stack: false applies once per order (one pair, one set, one item); otherwise it repeats
+// for every pair or set in the order. Until a venue saves
 // its own deals it gets the original Happy Hour: cocktails, 3-6pm and 9.30pm-close, the cheaper of each
 // two half price, and Owner's 10% not on the cocktails.
 const DEFAULT_DEALS = [{ id: "happyhour", name: "Happy Hour", enabled: true,
@@ -1328,35 +1331,39 @@ function dealCovers(t, cover, legacyCocktails){
 }
 function dealDescription(d){
   const what = [...(d.categories || []).map(n => splitCatName(n).title), ...(d.items || []).map(x => x.replace("|", " "))].join(", ") || (dealType(d) === "pair" ? "Cocktails" : "nothing chosen yet");
-  const pct = Number(d.pct) || 0, off = pct >= 100 ? "free" : pct === 50 ? "half price" : `${pct}% off`;
+  const pct = Number(d.pct) || 0, off = pct >= 100 ? "free" : pct === 50 ? "half price" : `${pct}% off`, once = d.stack === false ? ", once per order" : "";
   switch (dealType(d)) {
-    case "price": return `${what}: ${dealMoney(d.pricePence)} each`;
-    case "percent": return `${what}: ${off}`;
-    case "multibuy": return `${what}: ${Number(d.buyQty) || 2} for ${dealMoney(d.forPence)}`;
-    case "bundle": return `${(d.parts || []).map(pt => [...(pt.categories || []), ...(pt.items || []).map(x => x.replace("|", " "))].join(" or ") || "?").join(" + ")} for ${dealMoney(d.bundlePence)}`;
+    case "price": return `${what}: ${dealMoney(d.pricePence)} each${once ? ", one per order" : ""}`;
+    case "percent": return `${what}: ${off}${once ? ", one per order" : ""}`;
+    case "multibuy": return `${what}: ${Number(d.buyQty) || 2} for ${dealMoney(d.forPence)}${once}`;
+    case "bundle": return `${(d.parts || []).map(pt => [...(pt.categories || []), ...(pt.items || []).map(x => x.replace("|", " "))].join(" or ") || "?").join(" + ")} for ${dealMoney(d.bundlePence)}${once}`;
   }
   const pair = `buy 2${d.pairFrom === "sameProduct" ? " of the same" : ""}${d.samePrice ? " at the same price" : ""}`;
-  if (d.discounted === "fixed") return `${what}: ${pair} for ${dealMoney(d.pairPence)}`;
-  if (d.discounted === "matchCheaper") return `${what}: ${pair}, both at the cheaper price`;
-  return `${what}: ${pair}, the ${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${off}`;
+  if (d.discounted === "fixed") return `${what}: ${pair} for ${dealMoney(d.pairPence)}${once}`;
+  if (d.discounted === "matchCheaper") return `${what}: ${pair}, both at the cheaper price${once}`;
+  if (d.discounted === "samePriceOne") return `${what}: buy 2${d.pairFrom === "sameProduct" ? " of the same" : ""} at the same price, one ${off}${once}`;
+  return `${what}: ${pair}, the ${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${off}${once}`;
 }
 // One deal over the drinks not yet taken by another deal. Returns how much it takes off and which
 // drinks it used (a drink it can't save anything on stays free for the next deal).
 function applyDeal(d, pool){
-  const type = dealType(d), pct = Math.max(0, Math.min(100, Number(d.pct) || 0)), used = new Set();
+  const type = dealType(d), pct = Math.max(0, Math.min(100, Number(d.pct) || 0)), used = new Set(), once = d.stack === false;
   let saved = 0;
   const free = pool.filter(u => !u.used);
   const byPrice = list => list.slice().sort((a, b) => b.drink - a.drink);
-  const take = (units, off) => { if (off <= 0) return false; units.forEach(u => used.add(u)); saved += off; return true; };
+  const take = (units, off) => { if (off <= 0 || (once && saved > 0)) return false; units.forEach(u => used.add(u)); saved += off; return true; };
   if (type === "price" || type === "percent") {
-    free.filter(u => dealCovers(u, d)).forEach(u => take([u], type === "price" ? u.drink - Math.max(0, Number(d.pricePence) || 0) : Math.round(u.drink * pct / 100)));
+    // Once per order: the one with the most off.
+    const offFor = u => type === "price" ? u.drink - Math.max(0, Number(d.pricePence) || 0) : Math.round(u.drink * pct / 100);
+    free.filter(u => dealCovers(u, d)).sort((a, b) => offFor(b) - offFor(a)).forEach(u => take([u], offFor(u)));
   } else if (type === "pair" || type === "multibuy") {
     const n = type === "pair" ? 2 : Math.max(2, Number(d.buyQty) || 2), groups = new Map();
     free.filter(u => dealCovers(u, d, type === "pair")).forEach(u => {
-      const g = (d.pairFrom === "sameProduct" ? u.id + "|" + (u.variant || "") : "*") + (type === "pair" && d.samePrice ? "|" + u.drink : "");
+      const g = (d.pairFrom === "sameProduct" ? u.id + "|" + (u.variant || "") : "*") + (type === "pair" && (d.samePrice || d.discounted === "samePriceOne") ? "|" + u.drink : "");
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g).push(u);
     });
+    const sets = [];
     groups.forEach(list => {
       const sorted = byPrice(list);
       for (let i = 0; i + n <= sorted.length; i += n) {
@@ -1366,9 +1373,12 @@ function applyDeal(d, pool){
         else if (d.discounted === "fixed") off = sum - Math.max(0, Number(d.pairPence) || 0);
         else if (d.discounted === "matchCheaper") off = set[0].drink - set[1].drink;
         else off = Math.round((d.discounted === "dearer" ? set[0].drink : set[1].drink) * pct / 100);
-        take(set, off);
+        sets.push({ set, off });
       }
     });
+    // Once per order: the pair or set with the most off.
+    if (once) sets.sort((a, b) => b.off - a.off);
+    sets.forEach(x => take(x.set, x.off));
   } else if (type === "bundle") {
     const parts = (d.parts || []).filter(pt => (pt.categories || []).length || (pt.items || []).length);
     if (parts.length) {
