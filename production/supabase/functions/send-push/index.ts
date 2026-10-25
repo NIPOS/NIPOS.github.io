@@ -11,7 +11,7 @@ const CORS_HEADERS = {
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
 // Apple's push service refuses a subject that isn't a real https address or e-mail (".local" won't do).
-const DEFAULT_SUBJECT = "https://nipos.github.io/NIPOS/";
+const DEFAULT_SUBJECT = "https://nipos.github.io/production/";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
